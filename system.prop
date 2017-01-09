@@ -3,7 +3,7 @@
 #
 
 # GPU producer to CPU consumer not supported
-ro.bq.gpu_to_cpu_unsupported=1
+ro.bq.gpu_to_cpu_unsupported=0
 
 # from dalmore, check nvidia
 persist.tegra.nvmmlite = 1
@@ -22,7 +22,7 @@ persist.sys.display.resolution = 1920x1080
 persist.tegra.compositor=glcomposer
 
 # disable EGL_BUFFER_PRESERVED extension for OpenGLRenderer
-debug.hwui.render_dirty_regions=false
+debug.hwui.render_dirty_regions=true
 
 # hwui parameters
 ro.hwui.texture_cache_size=48.0
@@ -41,4 +41,4 @@ ro.hwui.texture_cache_flushrate=0.4
 ro.zygote.disable_gl_preload=true
 
 # Set carrier
-ro.carrier=wifi-only
+ro.carrier=
