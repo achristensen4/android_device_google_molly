@@ -5,11 +5,6 @@ on init
     # Support legacy paths
     symlink /sdcard /mnt/sdcard
     symlink /sdcard /storage/sdcard0
-
-on early-boot
-
-    setprop ro.audio.flinger_standbytime_ms 15000
-
 on post-fs
 
     # enable mlan once /system/vendor/firmware is available
@@ -31,9 +26,6 @@ on post-fs-data
 
     setprop vold.post_fs_data_done 1
 
-    # Disable mollyled's "pulsing" value
-    write /sys/devices/platform/molly-led/pulsing 0
-
 on boot
 
     mount debugfs /sys/kernel/debug /sys/kernel/debug
@@ -47,8 +39,8 @@ on boot
     write /sys/module/test_power/parameters/battery_present false
 
     # autosuspend root hubs immediately after attached devices
-    write /sys/bus/usb/devices/usb1/power/autosuspend_delay_ms 0
-    write /sys/bus/usb/devices/usb2/power/autosuspend_delay_ms 0
+    write /sys/bus/usb/devices/usb1/power/autosuspend_delay_ms 10
+    write /sys/bus/usb/devices/usb2/power/autosuspend_delay_ms 10
 
     # power
     chown system system /sys/kernel/tegra_cap/core_cap_level
@@ -59,7 +51,7 @@ on boot
     # Audio glitches can occur if we drop below 204MHz.  To reduce
     # risk/complexity further, we just disable LP core.  GP core
     # min freq is 306MHz.
-    write /sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/no_lp 1
+    write /sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/no_lp 0
 
     # Throughput hinting is designed to save power by slowing down the gpu
     # if it is beating the desired frame.  Without hinting, the gpu frequency
@@ -80,10 +72,10 @@ on boot
     # down its context appropriately.
     write /d/scaling/use_throughput_hint 0
 
-    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor conservative
-    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor conservative
-    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor conservative
-    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor conservative
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor powersave
+    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor powersave
+    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor powersave
+    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor powersave
 
     write /sys/devices/system/cpu/cpufreq/conservative/up_threshold 95
     write /sys/devices/system/cpu/cpufreq/conservative/down_threshold 50
@@ -93,7 +85,7 @@ on boot
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor interactive
     write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor interactive
     write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor interactive
-    write /sys/devices/system/cpu/cpufreq/interactive/boost_factor 2
+    write /sys/devices/system/cpu/cpufreq/interactive/boost_factor 0
     write /sys/devices/system/cpu/cpufreq/interactive/sustain_load 80
     write /sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/enable 1
     write /sys/devices/system/cpu/cpuquiet/current_governor runnable
@@ -123,8 +115,8 @@ on boot
     chown system system /sys/class/graphics/fb0/device/nvdps
 
     # Default Read Ahead value for sdcards
-    write /sys/block/mmcblk0/queue/read_ahead_kb 2048
-    write /sys/block/mmcblk1/queue/read_ahead_kb 2048
+    write /sys/block/mmcblk0/queue/read_ahead_kb 512
+    write /sys/block/mmcblk1/queue/read_ahead_kb 512
 
 on fs
 
@@ -145,71 +137,61 @@ on fs
     chown system system /sys/devices/platform/tegra_cec/cec_logical_addr_config
     chmod 0660 /sys/devices/platform/tegra_cec/cec_logical_addr_config
 
-service p2p_supplicant /system/bin/wpa_supplicant \
-    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
-    -I/system/etc/wifi/wpa_supplicant_overlay.conf -N \
-    -ip2p0 -Dnl80211 -c/data/misc/wifi/p2p_supplicant.conf \
-    -puse_p2p_group_interface=1 -e/data/misc/wifi/entropy.bin \
+service p2p_supplicant /system/bin/wpa_supplicant
+    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf
+    -I/system/etc/wifi/wpa_supplicant_overlay.conf -N
+    -ip2p0 -Dnl80211 -c/data/misc/wifi/p2p_supplicant.conf
+    -puse_p2p_group_interface=1 -e/data/misc/wifi/entropy.bin
     -g@android:wpa_wlan0
     #   we will start as root and wpa_supplicant will switch to user wifi
     #   after setting up the capabilities required for WEXT
-    #   user wifi
-    #   group wifi inet keystore
+    user wifi
+    group wifi inet keystore
     class main
     socket wpa_wlan0 dgram 660 wifi wifi
-    disabled
     oneshot
 
-service wpa_supplicant /system/bin/wpa_supplicant \
-    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
+service wpa_supplicant /system/bin/wpa_supplicant
+    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf
     -e/data/misc/wifi/entropy.bin -g@android:wpa_wlan0
     #   we will start as root and wpa_supplicant will switch to user wifi
     #   after setting up the capabilities required for WEXT
-    #   user wifi
-    #   group wifi inet keystore
+    user wifi
+    group wifi inet keystore
     class main
     socket wpa_wlan0 dgram 660 wifi wifi
-    disabled
     oneshot
 
 service dhcpcd_wlan0 /system/bin/dhcpcd -aABDKL
     class main
-    disabled
     oneshot
 
 service iprenew_wlan0 /system/bin/dhcpcd -n
     class main
-    disabled
     oneshot
 
 service dhcpcd_p2p /system/bin/dhcpcd -aABKL
     class main
-    disabled
     oneshot
 
 service iprenew_p2p /system/bin/dhcpcd -n
     class main
-    disabled
     oneshot
 
 service dhcpcd_eth0 /system/bin/dhcpcd -aABDKL -o domain_name_servers
 class main
-disabled
 oneshot
 
 service iprenew_eth0 /system/bin/dhcpcd -n
     class main
-    disabled
     oneshot
 
 service dhcpcd_bt-pan /system/bin/dhcpcd -ABKL
     class main
-    disabled
     oneshot
 
 service iprenew_bt-pan /system/bin/dhcpcd -n
     class main
-    disabled
     oneshot
 
 # start tf_daemon service
@@ -217,7 +199,3 @@ service tf_daemon /system/bin/tf_daemon -storageDir /data/tf -d
     class main
     user root
     group shell
-
-# may restart due to /data/tf not existing yet
-on property:init.svc.tf_daemon=restarting
-    mkdir /data/tf
